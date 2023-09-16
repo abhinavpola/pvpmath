@@ -34,7 +34,7 @@ socket.on('server_both_players_joined', (data) => {
     const roomCode = data.room_code;
     console.log(`Both players have joined room ${roomCode}. Let the battle begin!`);
     // Redirect to the battle room page with the valid room code
-    window.location.href = `/battles/${roomCode}`;
+    window.location.href = `/battles/${roomCode}?old_socket_id=${socket.id}`;
 });
 
 // Invalid room code
