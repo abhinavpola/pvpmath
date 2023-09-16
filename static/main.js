@@ -1,49 +1,44 @@
 const socket = io.connect(window.location.origin);
 
+// HTML Inputs
 const startButton = document.querySelector('#startGame');
-const joinButton = document.querySelector('.btn-secondary');
+const joinButton = document.querySelector('#joinGame');
 const challengeCodeInput = document.getElementById('challengeCode');
+const waitingSpinner = document.getElementById('waitingSpinner');
 
 startButton.addEventListener('click', () => {
     console.log('Start Battle clicked');
-    socket.emit('start_game');
+    socket.emit('client_start_game');
 });
-
-// When the game has started
-socket.on('game_started', (data) => {
-    const roomCode = data.room_code;
-    console.log(`Game has started in room ${roomCode}`);
-    // Redirect to the battle room page with the room code
-    window.location.href = `/battles/${roomCode}`;
-});
-
 
 joinButton.addEventListener('click', () => {
     const challengeCode = challengeCodeInput.value;
     console.log(`Join Battle clicked with code: ${challengeCode}`);
-    // Redirect to the battle room page with the provided code
-    window.location.href = `/battles/${challengeCode}`;
+    socket.emit('client_join_game', { room_code: challengeCode });
 });
 
+// Receiving room code from server
+socket.on('server_room_created', (data) => {
+    const roomCode = data.room_code;
+    console.log(`Room ${roomCode} created`);
+    challengeCodeInput.value = roomCode;
+});
 
-socket.on('both_players_joined', (data) => {
+// Player 1 joined, waiting for player 2
+socket.on('server_waiting_for_next_player', () => {
+    waitingSpinner.removeAttribute("hidden");
+})
+
+// Both players joined, redirect to /battles
+socket.on('server_both_players_joined', (data) => {
     const roomCode = data.room_code;
     console.log(`Both players have joined room ${roomCode}. Let the battle begin!`);
-
-    // Start a 60-second countdown timer
-    let secondsLeft = 60;
-    const countdownElement = document.getElementById('countdown');
-
-    const countdownInterval = setInterval(() => {
-        if (secondsLeft <= 0) {
-            clearInterval(countdownInterval);
-            countdownElement.textContent = "Time's up!";
-            // Implement logic to handle end of the game
-        } else {
-            countdownElement.textContent = `${secondsLeft} seconds left`;
-            secondsLeft--;
-        }
-    }, 1000);
+    // Redirect to the battle room page with the valid room code
+    window.location.href = `/battles/${roomCode}`;
 });
 
-// ... (rest of the code) ...
+// Invalid room code
+socket.on('server_invalid_room', (data) => {
+    const errorMessage = data.message;
+    alert(errorMessage); // Display an alert dialog with the error message
+});

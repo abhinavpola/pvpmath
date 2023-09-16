@@ -12,10 +12,13 @@
     <div class="container mt-5">
         <h1>Welcome to the Battle Game</h1>
         <button class="btn btn-primary" id="startGame">Start Battle</button>
-        <button class="btn btn-secondary">Join Battle</button>
+        <button class="btn btn-secondary" id="joinGame">Join Battle</button>
         <div class="form-group mt-3">
             <label for="challengeCode">Enter Challenge Code:</label>
             <input type="text" class="form-control" id="challengeCode">
+        </div>
+        <div id="waitingSpinner" hidden>
+            You will be redirected once player 2 joins...
         </div>
     </div>
 

@@ -1,42 +1,69 @@
-from string import ascii_uppercase, digits
-from random import choice
-from flask import Flask, render_template, redirect, url_for, request
-from flask_socketio import SocketIO, join_room
+import string
+import random
+import time
+from typing import Dict, List
+
+from flask import Flask, render_template, request, Response
+from flask_socketio import SocketIO, join_room, emit
+
+PLAYER_LIMIT = 2
 
 app = Flask(__name__)
 socketio = SocketIO(app)
 
 # Store active game rooms and their players
-active_rooms = {}
+active_rooms: Dict[str, Dict[str, List[str]]] = {}
 
 @app.route('/')
-def index():
+def index() -> Response:
     return render_template('index.html')
 
 @app.route('/battles/<room_code>')
-def battle_room(room_code):
+def battle_room(room_code: str) -> Response:
     return render_template('battle.html', room_code=room_code)
 
-@socketio.on('start_game')
-def start_game():
+@socketio.on('client_start_game')
+def start_game() -> None:
     room_code = generate_room_code()
     active_rooms[room_code] = {'players': []}
-    join_room(room_code)
-    socketio.emit('game_started', {'room_code': room_code})
+    emit('server_room_created', {'room_code': room_code})
     print(f"Room '{room_code}' created and waiting for players.")
 
-@socketio.on('join_game')
-def join_game(data):
+@socketio.on('client_join_game')
+def join_game(data: dict) -> None:
     room_code = data['room_code']
-    join_room(room_code)
-    active_rooms[room_code]['players'].append(request.sid)
-    if len(active_rooms[room_code]['players']) == 2:
-        socketio.emit('both_players_joined', {'room_code': room_code}, room=room_code)
-        print(f"Room '{room_code}' now has 2 players. Game can start!")
+    if is_valid_room(room_code):
+        join_player(room_code, request.sid)
+        if is_room_full(room_code):
+            emit('server_both_players_joined', {'room_code': room_code}, to=room_code)
+            start_game_timer(room_code)
+            print(f"Room '{room_code}' now has {PLAYER_LIMIT} players. Starting the timer...")
+        else:
+            emit('server_waiting_for_next_player', to=room_code)
+    else:
+        emit('server_invalid_room', {'message': 'Invalid room code or room is full'}, to=room_code)
 
-def generate_room_code():
-    characters = ascii_uppercase + digits
-    room_code = ''.join(choice(characters) for _ in range(6))
+def is_valid_room(room_code: str) -> bool:
+    return room_code in active_rooms
+
+def is_room_full(room_code: str) -> bool:
+    return len(active_rooms[room_code]['players']) == PLAYER_LIMIT
+
+def join_player(room_code: str, player_id: str) -> None:
+    active_rooms[room_code]['players'].append(player_id)
+    join_room(room_code)
+
+def start_game_timer(room_code: str) -> None:
+    timer = 60
+    while timer > 0:
+        emit('server_timer_update', {'time': timer}, to=room_code)
+        timer -= 1
+        time.sleep(1)
+    print(f"Time's up in room '{room_code}'.")
+
+def generate_room_code() -> str:
+    characters = string.ascii_uppercase + string.digits
+    room_code = ''.join(random.choice(characters) for _ in range(6))
     return room_code
 
 if __name__ == '__main__':
