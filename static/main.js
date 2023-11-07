@@ -1,8 +1,8 @@
 const socket = io.connect(window.location.origin);
 
 // HTML Inputs
-const startButton = document.querySelector('#startGame');
-const joinButton = document.querySelector('#joinGame');
+const startButton = document.getElementById('startGame');
+const joinButton = document.getElementById('joinGame');
 const challengeCodeInput = document.getElementById('challengeCode');
 const waitingSpinner = document.getElementById('waitingSpinner');
 
@@ -32,7 +32,7 @@ socket.on('server_waiting_for_next_player', () => {
 // Both players joined, redirect to /battles
 socket.on('server_both_players_joined', (data) => {
     const roomCode = data.room_code;
-    console.log(`Both players have joined room ${roomCode}. Let the battle begin!`);
+    console.log(`All players have joined room ${roomCode}. Let the battle begin!`);
     // Redirect to the battle room page with the valid room code
     window.location.href = `/battles/${roomCode}?old_socket_id=${socket.id}`;
 });
