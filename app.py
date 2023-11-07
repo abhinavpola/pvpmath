@@ -9,7 +9,7 @@ from flask_socketio import SocketIO, join_room, leave_room, emit
 from util import problem_generator
 from names_generator import generate_name
 
-PLAYER_LIMIT = 1
+PLAYER_LIMIT = 2
 TIME_LIMIT_SECS = 60
 
 app = Flask(__name__)
@@ -29,6 +29,7 @@ scores: Dict[str, Dict[str, int]] = {}
 # Human-readable aliases for socket ids
 aliases: Dict[str, str] = {}
 
+
 @app.route("/")
 def index() -> Response:
     return render_template("index.html")
@@ -40,7 +41,6 @@ def battle_room(room_code: str) -> Response:
     return render_template(
         "battle.html", room_code=room_code, old_socket_id=args.get("old_socket_id")
     )
-
 
 @socketio.on("client_start_game")
 def start_game() -> None:
@@ -75,10 +75,10 @@ def update_socket_id(data: dict) -> None:
         print(f"Found old socket {data['old_socket_id']} in room {room_code}")
         join_player(room_code, request.sid, active_rooms)
         leave_player(room_code, data["old_socket_id"], waiting_rooms)
-        aliases[request.sid] = generate_name(style='capital')
+        aliases[request.sid] = generate_name(style="capital")
 
         # Send a nickname back to the requester
-        emit('server_update_name', {"alias" : aliases[request.sid]})
+        emit("server_update_name", {"alias": f"alias: {aliases[request.sid]}"})
 
     if is_room_full(room_code, active_rooms):
         setup_problem_generator(room_code)
@@ -146,7 +146,11 @@ def start_game_timer(room_code: str) -> None:
             socketio.emit("server_timer_update", {"time": timer}, to=room_code)
             timer -= 1
             time.sleep(1)
-        socketio.emit("server_game_ended", to=room_code)
+        socketio.emit(
+            "server_game_ended",
+            {"scores": {aliases[k]: v} for k, v in scores[room_code].items()},
+            to=room_code,
+        )
         print(f"Time's up in room '{room_code}'.")
 
     socketio.start_background_task(target=timer_task)
