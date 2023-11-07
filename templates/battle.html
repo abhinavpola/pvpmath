@@ -19,7 +19,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        #questionBox {
+        .boldText {
             font-size: 24px;
             font-weight: bold;
         }
@@ -28,14 +28,18 @@
 
 <body>
     <div class="container mt-5">
-        <h1 class="text-center mb-4">Welcome to the Battle Room</h1>
+        <h1 class="text-center mb-4" id="aliasText">Welcome to the Battle Room</h1>
         <p class="text-center">Room Code: {{ room_code }}</p>
         <div class="form-group mt-3 text-center">
             <div class="mb-3">
-                <label for="questionBox" id="questionBox">Problem</label>
+                <label for="answerBox" id="questionBox" class="boldText">Problem</label>
             </div>
             <div>
                 <input type="text" class="form-control" id="answerBox" autofocus>
+            </div>
+            <div class="mb-3">
+                <span class="boldText">Score: </span>
+                <span class="boldText" id="scoreText">0</span>
             </div>
         </div>
         <p class="text-center mt-3" id="countdown"></p>

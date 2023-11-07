@@ -2,6 +2,9 @@ const socket = io.connect(window.location.origin);
 
 const problemText = document.getElementById('questionBox');
 const answerBoxInput = document.getElementById('answerBox');
+const scoreText = document.getElementById('scoreText');
+const aliasText = document.getElementById('aliasText');
+
 
 // Function to extract query parameter from URL
 function getQueryParam(param) {
@@ -17,14 +20,18 @@ function getPathParameter() {
 window.onload = function () {
     answerBoxInput.focus();
     // Extract 'room_code' path parameter from the URL
-    const roomCode = getPathParameter();
+    window.roomCode = getPathParameter();
 
     // Extract the 'old_socket_id' query parameter from the URL
     const paramValue = getQueryParam('old_socket_id');
 
     // Emit the event as soon as the page loads
-    socket.emit('client_battle_load', { room_code: roomCode, old_socket_id: paramValue });
+    socket.emit('client_battle_load', { room_code: window.roomCode, old_socket_id: paramValue });
 };
+
+socket.on('server_update_name', (data) => {
+    aliasText.innerHTML = data['alias']
+})
 
 // Listen for timer updates
 socket.on('server_timer_update', (data) => {
@@ -34,14 +41,18 @@ socket.on('server_timer_update', (data) => {
 });
 
 socket.on('server_generated_problem', (data) => {
+    answerBoxInput.value = ''
     problemText.innerHTML = data['problem']
+    scoreText.innerHTML = data['score']
 })
 
 socket.on('server_hello', (data) => {
     console.log(data)
 })
 
+socket.on()
+
 answerBoxInput.oninput = function() {
-    console.log("answer changing to " + answerBoxInput.value);
+    socket.emit('client_submitted_answer', { room_code: window.roomCode, answer: answerBoxInput.value } )
   };
   
