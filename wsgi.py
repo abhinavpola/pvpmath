@@ -1,5 +1,5 @@
-from pvpmath import app
-from pvpmath import socketio
+from app import app
+from app import socketio
 
 if __name__ == "__main__":
   socketio.run(app)
