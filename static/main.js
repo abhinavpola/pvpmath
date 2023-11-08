@@ -1,4 +1,4 @@
-const socket = io.connect(window.location.origin);
+const socket = io.connect();
 
 // HTML Inputs
 const startButton = document.getElementById('startGame');

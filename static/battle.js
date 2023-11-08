@@ -1,4 +1,4 @@
-const socket = io.connect(window.location.origin);
+const socket = io.connect();
 
 const problemText = document.getElementById('questionBox');
 const answerBoxInput = document.getElementById('answerBox');
