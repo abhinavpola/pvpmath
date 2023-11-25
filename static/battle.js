@@ -34,13 +34,16 @@ function displayScores(scores) {
     var tbody = document.createElement("tbody");
 
     // Iterate over the scores dictionary and populate the table rows
-    for (var playerName in scores) {
+    const scoresArray = Object.entries(scores);
+    scoresArray.sort((a, b) => b[1] - a[1]);
+
+    scoresArray.forEach(([playerName, score]) => {
         var row = tbody.insertRow();
         var cell1 = row.insertCell();
         cell1.textContent = playerName;
         var cell2 = row.insertCell();
-        cell2.textContent = scores[playerName];
-    }
+        cell2.textContent = score;
+    });
 
     // Append the table body to the table element
     table.appendChild(tbody);
