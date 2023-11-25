@@ -57,6 +57,8 @@ def join_game() -> Response:
     if recaptcha.verify():
         room_code = request.form.get("challengeCode")
         player_name = request.form.get("playerName")
+        if room_code not in active_rooms:
+            return '<div id="waitingSpinner">The game you are attempting to join doesn\'t exist...</div>'
         if player_name not in player_rooms:
             if not is_room_full(room_code):
                 player_rooms[player_name] = room_code
