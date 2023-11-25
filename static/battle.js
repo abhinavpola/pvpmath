@@ -12,11 +12,6 @@ function getQueryParam(param) {
     return urlParams.get(param);
 }
 
-function getPathParameter() {
-    const pathSegments = window.location.pathname.split('/');
-    return pathSegments[2]; // Assuming 'room_code' is the third segment (index 2)
-}
-
 function displayScores(scores) {
     // Get the element with id "scoreText"
     var scoreSectionElement = document.getElementById("scoreSection");
@@ -57,19 +52,13 @@ function displayScores(scores) {
 
 window.onload = function () {
     answerBoxInput.focus();
-    // Extract 'room_code' path parameter from the URL
-    window.roomCode = getPathParameter();
 
-    // Extract the 'old_socket_id' query parameter from the URL
-    const paramValue = getQueryParam('old_socket_id');
+    window.roomCode = getQueryParam('roomcode')
+    window.playerName = getQueryParam('playername')
 
     // Emit the event as soon as the page loads
-    socket.emit('client_battle_load', { room_code: window.roomCode, old_socket_id: paramValue });
+    socket.emit('client_battle_load', { room_code: window.roomCode, player_name: window.playerName });
 };
-
-socket.on('server_update_name', (data) => {
-    aliasText.innerHTML = data['alias']
-})
 
 // Listen for timer updates
 socket.on('server_timer_update', (data) => {

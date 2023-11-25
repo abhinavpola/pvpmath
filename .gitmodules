@@ -1,0 +1,3 @@
+[submodule "flask_recaptcha"]
+	path = flask_recaptcha
+	url = https://github.com/mardix/flask-recaptcha.git

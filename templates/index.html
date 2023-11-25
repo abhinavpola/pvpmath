@@ -6,26 +6,35 @@
     <!-- Include Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 
 <body>
     <div class="container mt-5">
         <h1>PvP Math</h1>
-        <button class="btn btn-primary" id="startGame">Start Game</button>
-        <button class="btn btn-secondary" id="joinGame">Join Game</button>
-        <div class="form-group mt-3">
-            <label for="challengeCode">Enter Challenge Code:</label>
-            <input type="text" class="form-control" id="challengeCode">
-        </div>
-        <div id="waitingSpinner" hidden>
-            You will be redirected once player 2 joins...
-        </div>
-    </div>
+        <p>Start the game, then share the code and join the game. Alternatively, enter a code and then join the game.</p>
+        <form>
+            <label for="readOnlyName">Your player name:</label>
+            <input id="readOnlyName" type="text" value="{{ player_name }}" name="playerName" readonly>
 
-    <!-- Include Socket.IO library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
-    <!-- Include main.js -->
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
+            <!-- reCAPTCHA -->
+            <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
+
+            <button class="btn btn-primary" id="startGame" hx-post="/start" hx-trigger="click"
+                hx-target="#challengeCode" hx-swap="outerHTML">Start Game</button>
+            <button class="btn btn-secondary" id="joinGame" hx-post="/join" hx-trigger="click"
+                hx-target="#waitingSpinner" hx-swap="outerHTML">Join Game</button>
+            <div class="form-group mt-3">
+                <label for="challengeCode">Enter Challenge Code:</label>
+                <input type="text" class="form-control" id="challengeCode" name="challengeCode">
+            </div>
+            <div id="waitingSpinner" hidden>
+                You will be redirected once player 2 joins...
+            </div>
+        </form>
+    </div>
+    <!-- Include HTMX library -->
+    <script src="https://unpkg.com/htmx.org@1.9.9"></script>
 </body>
 
 </html>

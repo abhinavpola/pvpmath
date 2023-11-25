@@ -1,27 +1,32 @@
 import string
 import random
 import time
-from typing import Dict, List
+from typing import Dict, List, MutableSet
 
 from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, join_room, leave_room, emit
+from flask_recaptcha import flask_recaptcha
 
 from util import problem_generator
 from names_generator import generate_name
 
+import jsonpickle  # pip install jsonpickle
+import json
+
 PLAYER_LIMIT = 2
-TIME_LIMIT_SECS = 60
+TIME_LIMIT_SECS = 120
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+recaptcha = flask_recaptcha.ReCaptcha(app=app)
 
-RoomMap = Dict[str, Dict[str, List[str]]]
+RoomMap = Dict[str, Dict[str, MutableSet]]
 
-# Rooms on the home page
-waiting_rooms: RoomMap = {}
-
-# Store active game rooms and their players on the battle page
+# Store active game rooms and their players
 active_rooms: RoomMap = {}
+
+# To tell which room a player is currently in (only 1 at a time)
+player_rooms: Dict[str, str] = {}
 
 # Scores for each player in each active room
 scores: Dict[str, Dict[str, int]] = {}
@@ -32,55 +37,84 @@ aliases: Dict[str, str] = {}
 
 @app.route("/")
 def index() -> Response:
-    return render_template("index.html")
+    return render_template("index.html", player_name=generate_name(style="capital"))
 
 
-@app.route("/battles/<room_code>")
-def battle_room(room_code: str) -> Response:
+@app.route("/start", methods=["POST"])
+def start_game() -> Response:
+    if recaptcha.verify():
+        room_code = generate_room_code()
+        active_rooms[room_code] = {"players": set()}
+        print(f"Room '{room_code}' created and waiting for {PLAYER_LIMIT} players.")
+        response = f"""
+        <input type="text" class="form-control" id="challengeCode" name="challengeCode" value="{room_code}">
+        """
+        return response
+
+
+@app.route("/join", methods=["POST"])
+def join_game() -> Response:
+    if recaptcha.verify():
+        room_code = request.form.get("challengeCode")
+        player_name = request.form.get("playerName")
+        if player_name not in player_rooms:
+            if not is_room_full(room_code):
+                player_rooms[player_name] = room_code
+                active_rooms[room_code]["players"].add(player_name)
+            else:
+                return '<div id="waitingSpinner">The game you are attempting to join is full...</div>'
+        else:
+            old_room_code = player_rooms[player_name]
+            active_rooms[old_room_code]["players"].remove(player_name)
+            if not is_room_full(room_code):
+                player_rooms[player_name] = room_code
+                active_rooms[room_code]["players"].add(player_name)
+            else:
+                return '<div id="waitingSpinner">The game you are attempting to join is full...</div>'
+
+        if is_room_full(room_code):  # redirect
+            response = Response("")
+            response.headers[
+                "HX-Redirect"
+            ] = f"/battles?roomcode={room_code}&playername={player_name}"
+            return response
+        else:
+            return '<div id="waitingSpinner" hx-post="/join" hx-trigger="load delay:2s" hx-swap="outerHTML">You will be redirected once both players have joined...</div>'
+
+
+@app.route("/battles")
+def battle_room() -> Response:
     args = request.args
     return render_template(
-        "battle.html", room_code=room_code, old_socket_id=args.get("old_socket_id")
+        "battle.html",
+        room_code=args.get("roomcode"),
+        player_name=args.get("playername"),
     )
 
-@socketio.on("client_start_game")
-def start_game() -> None:
-    room_code = generate_room_code()
-    waiting_rooms[room_code] = {"players": []}
-    emit("server_room_created", {"room_code": room_code})
-    print(f"Room '{room_code}' created and waiting for {PLAYER_LIMIT} players.")
 
-
-@socketio.on("client_join_game")
-def join_game(data: dict) -> None:
-    room_code = data["room_code"]
-    if room_code in waiting_rooms:
-        join_player(room_code, request.sid, waiting_rooms)
-        if is_room_full(room_code, waiting_rooms):
-            emit("server_both_players_joined", {"room_code": room_code}, to=room_code)
-            active_rooms[room_code] = {"players": []}
-        else:
-            emit("server_waiting_for_next_player", to=room_code)
-    else:
-        emit(
-            "server_invalid_room",
-            {"message": "Invalid room code or room is full"},
-            to=room_code,
-        )
+@socketio.on("disconnect")
+def handle_disconnect():
+    print("player disconnecting")
+    leave_player(request.sid)
+    serialized = jsonpickle.encode(
+        [
+            active_rooms,
+            player_rooms,
+        ]
+    )
+    print(json.dumps(json.loads(serialized), indent=2))
 
 
 @socketio.on("client_battle_load")
-def update_socket_id(data: dict) -> None:
+def assign_socket_id(data: dict) -> None:
     room_code = data["room_code"]
-    if data["old_socket_id"] in waiting_rooms[room_code]["players"]:
-        print(f"Found old socket {data['old_socket_id']} in room {room_code}")
-        join_player(room_code, request.sid, active_rooms)
-        leave_player(room_code, data["old_socket_id"], waiting_rooms)
-        aliases[request.sid] = generate_name(style="capital")
+    player_name = data["player_name"]
+    if player_name in active_rooms[room_code]["players"]:
+        print(f"Found player {player_name} in room {room_code}")
+        join_room(room_code, request.sid)
+        aliases[request.sid] = player_name
 
-        # Send a nickname back to the requester
-        emit("server_update_name", {"alias": f"alias: {aliases[request.sid]}"})
-
-    if is_room_full(room_code, active_rooms):
+    if is_room_full(room_code):
         setup_problem_generator(room_code)
         start_game_timer(room_code)
         print(
@@ -91,33 +125,35 @@ def update_socket_id(data: dict) -> None:
 @socketio.on("client_submitted_answer")
 def check_answer(data: dict) -> None:
     room_code = data["room_code"]
-    current_score = scores[room_code][request.sid]
+    current_score = scores[room_code][aliases[request.sid]]
 
     if data["answer"] == active_rooms[room_code]["problems"][current_score]["answer"]:
-        scores[room_code][request.sid] += 1
-        new_score = scores[room_code][request.sid]
+        scores[room_code][aliases[request.sid]] += 1
+        new_score = scores[room_code][aliases[request.sid]]
         emit(
             "server_generated_problem",
             {
                 "problem": active_rooms[room_code]["problems"][new_score]["problem"],
                 "score": new_score,
             },
-            to=room_code,
+            to=request.sid,
         )
 
 
-def is_room_full(room_code: str, room_map: RoomMap) -> bool:
-    return len(room_map[room_code]["players"]) == PLAYER_LIMIT
+def is_room_full(room_code: str) -> bool:
+    return len(active_rooms[room_code]["players"]) == PLAYER_LIMIT
 
 
-def join_player(room_code: str, player_id: str, room_map: RoomMap) -> None:
-    room_map[room_code]["players"].append(player_id)
-    join_room(room_code, player_id)
-
-
-def leave_player(room_code: str, player_id: str, room_map: RoomMap) -> None:
-    room_map[room_code]["players"].remove(player_id)
-    leave_room(room_code, player_id)
+def leave_player(player_id: str) -> None:
+    if player_id in aliases and aliases[player_id] in player_rooms:
+        room_code = player_rooms[aliases[player_id]]
+        active_rooms[room_code]["players"].discard(aliases[player_id])
+        del player_rooms[aliases[player_id]]
+        if len(active_rooms[room_code]["players"]) == 0:
+            _ = scores.pop(room_code, None)
+            del active_rooms[room_code]
+        del aliases[player_id]
+        leave_room(room_code, player_id)
 
 
 def setup_problem_generator(room_code):
@@ -148,7 +184,7 @@ def start_game_timer(room_code: str) -> None:
             time.sleep(1)
         socketio.emit(
             "server_game_ended",
-            {"scores": {aliases[k]: v} for k, v in scores[room_code].items()},
+            {"scores": scores[room_code]},
             to=room_code,
         )
         print(f"Time's up in room '{room_code}'.")
@@ -163,4 +199,4 @@ def generate_room_code() -> str:
 
 
 if __name__ == "__main__":
-    socketio.run(app, host='0.0.0.0')
+    socketio.run(app, host="0.0.0.0", port=4000)
