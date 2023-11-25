@@ -17,4 +17,4 @@ RUN pip install gunicorn gevent-websocket eventlet
 EXPOSE 4000
 
 # Run Gunicorn when the container launches
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:4000", "app:app"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:4000", "--worker-class", "eventlet", "app:app"]
