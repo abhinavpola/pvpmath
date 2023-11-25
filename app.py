@@ -81,7 +81,7 @@ def join_game() -> Response:
             ] = f"/battles?roomcode={room_code}&playername={player_name}"
             return response
         else:
-            return '<div id="waitingSpinner" hx-post="/join" hx-trigger="load delay:2s" hx-swap="outerHTML">You will be redirected once both players have joined...</div>'
+            return f'<div id="waitingSpinner" hx-post="/join" hx-trigger="load delay:2s" hx-swap="outerHTML">You will be redirected once {PLAYER_LIMIT - len(active_rooms[room_code]["players"])} players have joined...</div>'
 
 
 @app.route("/battles")
