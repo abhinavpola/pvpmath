@@ -23,6 +23,17 @@
             font-size: 24px;
             font-weight: bold;
         }
+
+        .scoreFont {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Additional styling for the form control */
+        .form-control-sm {
+            width: 150px; /* Adjust the width as needed */
+            margin: 0 auto; /* Center the input horizontally */
+        }
     </style>
 </head>
 
@@ -35,11 +46,12 @@
                 <label for="answerBox" id="questionBox" class="boldText">Problem</label>
             </div>
             <div>
-                <input type="text" class="form-control" id="answerBox" autofocus>
+                <!-- Apply the form-control-sm class to make the input smaller and centered -->
+                <input type="text" class="form-control form-control-sm" id="answerBox" autofocus>
             </div>
-            <div class="mb-3" id="scoreSection">
-                <span class="boldText">Score: </span>
-                <span class="boldText" id="scoreText">0</span>
+            <div class="mb-3" id="scoreSection" style="margin-top: 30px;">
+                <span class="scoreFont">Score: </span>
+                <span class="scoreFext" id="scoreText">0</span>
             </div>
         </div>
         <p class="text-center mt-3" id="countdown"></p>
