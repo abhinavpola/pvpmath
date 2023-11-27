@@ -1,7 +1,7 @@
 import string
 import random
 import time
-from typing import Dict, List, MutableSet
+from typing import Dict, Any
 
 from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, join_room, leave_room, emit
@@ -13,14 +13,11 @@ from names_generator import generate_name
 import jsonpickle  # pip install jsonpickle
 import json
 
-PLAYER_LIMIT = 2
-TIME_LIMIT_SECS = 120
-
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins=["https://pvpmath.abhinavpola.com"])
 recaptcha = flask_recaptcha.ReCaptcha(app=app)
 
-RoomMap = Dict[str, Dict[str, MutableSet]]
+RoomMap = Dict[str, Dict[str, Any]]
 
 # Store active game rooms and their players
 active_rooms: RoomMap = {}
@@ -45,7 +42,9 @@ def start_game() -> Response:
     if recaptcha.verify():
         room_code = generate_room_code()
         active_rooms[room_code] = {"players": set()}
-        print(f"Room '{room_code}' created and waiting for {PLAYER_LIMIT} players.")
+        active_rooms[room_code]["player_limit"] = request.form.get("numPlayers")
+        active_rooms[room_code]["time_limit"] = request.form.get("gameDuration")
+        print(f"Room '{room_code}' created and waiting for {request.form.get('numPlayers')} players.")
         response = f"""
         <input type="text" class="form-control" id="challengeCode" name="challengeCode" value="{room_code}">
         """
@@ -81,7 +80,7 @@ def join_game() -> Response:
             ] = f"/battles?roomcode={room_code}&playername={player_name}"
             return response
         else:
-            return f'<div id="waitingSpinner" hx-post="/join" hx-trigger="load delay:2s" hx-swap="outerHTML">You will be redirected once {PLAYER_LIMIT - len(active_rooms[room_code]["players"])} players have joined...</div>'
+            return f'<div id="waitingSpinner" hx-post="/join" hx-trigger="load delay:2s" hx-swap="outerHTML">You will be redirected once {active_rooms[room_code]["player_limit"] - len(active_rooms[room_code]["players"])} players have joined...</div>'
 
 
 @app.route("/battles")
@@ -120,7 +119,7 @@ def assign_socket_id(data: dict) -> None:
         setup_problem_generator(room_code)
         start_game_timer(room_code)
         print(
-            f"Room '{room_code}' now has {PLAYER_LIMIT} players. Starting the timer..."
+            f"Room '{room_code}' now has {active_rooms[room_code]['player_limit']} players. Starting the timer..."
         )
 
 
@@ -143,7 +142,7 @@ def check_answer(data: dict) -> None:
 
 
 def is_room_full(room_code: str) -> bool:
-    return len(active_rooms[room_code]["players"]) == PLAYER_LIMIT
+    return len(active_rooms[room_code]["players"]) == active_rooms[room_code]["player_limit"]
 
 
 def leave_player(player_id: str) -> None:
@@ -165,7 +164,7 @@ def setup_problem_generator(room_code):
 
 
 def start_game_timer(room_code: str) -> None:
-    timer = TIME_LIMIT_SECS
+    timer = active_rooms[room_code]["time_limit"]
 
     # Send first problem before starting timer
     emit(

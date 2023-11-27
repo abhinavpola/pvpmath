@@ -50,12 +50,30 @@
                     class="form-control">
             </div>
 
+            <!-- Number of Players Selection -->
+            <div class="mb-3">
+                <label for="numPlayers" class="form-label">Number of Players:</label>
+                <select class="form-select" id="numPlayers" name="numPlayers">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </select>
+            </div>
+
+            <!-- Game Duration Slider -->
+            <div class="mb-3">
+                <label for="gameDuration" class="form-label">Game Duration (seconds):</label>
+                <input type="range" class="form-range" id="gameDuration" name="gameDuration" min="10" max="120"
+                    value="120" oninput="updateSliderValue(this.value)">
+                <p>Selected Duration: <span id="sliderValue">120</span> seconds</p>
+            </div>
+
             <!-- reCAPTCHA -->
             <div class="mb-3 d-flex justify-content-center">
                 <div class="g-recaptcha" data-sitekey="6Ld8qxopAAAAAMEzo6uk2Af4Br38vUaFQR2fGISY"></div>
             </div>
-
-
 
             <button class="btn btn-primary" id="startGame" hx-post="/start" hx-trigger="click"
                 hx-target="#challengeCode" hx-swap="outerHTML">Start Game</button>
@@ -75,6 +93,12 @@
 
     <!-- Include HTMX library -->
     <script src="https://unpkg.com/htmx.org@1.9.9"></script>
+
+    <script>
+        function updateSliderValue(value) {
+            document.getElementById('sliderValue').textContent = value;
+        }
+    </script>
 </body>
 
 </html>
