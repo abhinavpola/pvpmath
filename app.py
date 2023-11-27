@@ -5,7 +5,6 @@ from typing import Dict, Any
 
 from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, join_room, leave_room, emit
-from flask_recaptcha import flask_recaptcha
 
 from util import problem_generator
 from names_generator import generate_name
@@ -15,15 +14,6 @@ import json
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins=["https://pvpmath.abhinavpola.com"])
-
-app.config.update(dict(
-    RECAPTCHA_ENABLED = True,
-    RECAPTCHA_SITE_KEY = "6Ld8qxopAAAAAMEzo6uk2Af4Br38vUaFQR2fGISY",
-    RECAPTCHA_SECRET_KEY = "6Ld8qxopAAAAAGHjN3NLivX7qnPGEBfREXXhu4TK",
-))
-
-recaptcha = flask_recaptcha.ReCaptcha()
-recaptcha.init_app(app)
 
 RoomMap = Dict[str, Dict[str, Any]]
 
@@ -47,11 +37,10 @@ def index() -> Response:
 
 @app.route("/start", methods=["POST"])
 def start_game() -> Response:
-    if recaptcha.verify():
         room_code = generate_room_code()
         active_rooms[room_code] = {"players": set()}
-        active_rooms[room_code]["player_limit"] = request.form.get("numPlayers")
-        active_rooms[room_code]["time_limit"] = request.form.get("gameDuration")
+        active_rooms[room_code]["player_limit"] = int(request.form.get("numPlayers"))
+        active_rooms[room_code]["time_limit"] = int(request.form.get("gameDuration"))
         print(f"Room '{room_code}' created and waiting for {request.form.get('numPlayers')} players.")
         response = f"""
         <input type="text" class="form-control" id="challengeCode" name="challengeCode" value="{room_code}">
@@ -61,7 +50,6 @@ def start_game() -> Response:
 
 @app.route("/join", methods=["POST"])
 def join_game() -> Response:
-    if recaptcha.verify():
         room_code = request.form.get("challengeCode")
         player_name = request.form.get("playerName")
         if room_code not in active_rooms:

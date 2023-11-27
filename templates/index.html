@@ -17,7 +17,6 @@
     <!-- Include Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         body {
             display: flex;
@@ -68,11 +67,6 @@
                 <input type="range" class="form-range" id="gameDuration" name="gameDuration" min="10" max="120"
                     value="120" oninput="updateSliderValue(this.value)">
                 <p>Selected Duration: <span id="sliderValue">120</span> seconds</p>
-            </div>
-
-            <!-- reCAPTCHA -->
-            <div class="mb-3 d-flex justify-content-center">
-                {{ recaptcha }}
             </div>
 
             <button class="btn btn-primary" id="startGame" hx-post="/start" hx-trigger="click"
