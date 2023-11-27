@@ -13,7 +13,7 @@ import jsonpickle  # pip install jsonpickle
 import json
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins=["https://pvpmath.abhinavpola.com"])
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 RoomMap = Dict[str, Dict[str, Any]]
 
