@@ -15,7 +15,15 @@ import json
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins=["https://pvpmath.abhinavpola.com"])
-recaptcha = flask_recaptcha.ReCaptcha(app=app)
+
+app.config.update(dict(
+    RECAPTCHA_ENABLED = True,
+    RECAPTCHA_SITE_KEY = "6Ld8qxopAAAAAMEzo6uk2Af4Br38vUaFQR2fGISY",
+    RECAPTCHA_SECRET_KEY = "6Ld8qxopAAAAAGHjN3NLivX7qnPGEBfREXXhu4TK",
+))
+
+recaptcha = flask_recaptcha.ReCaptcha()
+recaptcha.init_app(app)
 
 RoomMap = Dict[str, Dict[str, Any]]
 

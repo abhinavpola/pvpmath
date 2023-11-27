@@ -72,7 +72,7 @@
 
             <!-- reCAPTCHA -->
             <div class="mb-3 d-flex justify-content-center">
-                <div class="g-recaptcha" data-sitekey="6Ld8qxopAAAAAMEzo6uk2Af4Br38vUaFQR2fGISY"></div>
+                {{ recaptcha }}
             </div>
 
             <button class="btn btn-primary" id="startGame" hx-post="/start" hx-trigger="click"
