@@ -18,7 +18,10 @@
     <style>
         /* Custom styles */
         body {
-            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
         }
 
         .container {
@@ -29,7 +32,7 @@
         }
 
         .boldText {
-            font-size: 24px;
+            font-size: xx-large;
             font-weight: bold;
         }
 
@@ -51,14 +54,15 @@
 <body>
     <div class="container mt-5">
         <h1 class="text-center mb-4" id="aliasText">Welcome to the Battle Room, {{ player_name }}</h1>
-        <p class="text-center">Room Code: {{ room_code }}</p>
+        <a href="/">Return home</a>
+        <h4 class="text-center">Room Code: {{ room_code }}</h4>
         <div class="form-group mt-3 text-center">
             <div class="mb-3">
                 <label for="answerBox" id="questionBox" class="boldText">Problem</label>
             </div>
             <div>
                 <!-- Apply the form-control-sm class to make the input smaller and centered -->
-                <input type="text" class="form-control form-control-sm" id="answerBox" autofocus>
+                <input type="text" class="form-control form-control-sm input-lg" id="answerBox" autofocus>
             </div>
             <div class="mb-3" id="scoreSection" style="margin-top: 30px;">
                 <span class="scoreFont">Score: </span>
