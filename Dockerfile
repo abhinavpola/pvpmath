@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install gunicorn gevent-websocket eventlet
 
 # Expose the port that the app runs on
-EXPOSE 4000
+EXPOSE 80
 
 # Run Gunicorn when the container launches
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:4000", "--worker-class", "eventlet", "app:app"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:80", "--worker-class", "eventlet", "app:app"]
