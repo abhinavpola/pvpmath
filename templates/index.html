@@ -150,9 +150,17 @@
             tempTextarea.select();
             tempTextarea.setSelectionRange(0, 99999); // For mobile devices
 
-            // Copy the text to the clipboard
-            document.execCommand('copy');
-
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Share Challenge Link',
+                    text: textToCopy,
+                })
+                .then(() => console.log('Shared successfully'))
+                .catch((error) => console.error('Error sharing:', error));
+            } else {
+                // Copy the text to the clipboard
+                document.execCommand('copy');
+            }
             // Remove the temporary textarea
             document.body.removeChild(tempTextarea);
         });
