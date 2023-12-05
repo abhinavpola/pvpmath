@@ -7,9 +7,18 @@ from flask_socketio import SocketIO, join_room, leave_room, emit
 
 from util import problem_generator
 from names_generator import generate_name
+from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials
+
+load_dotenv()
+cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
+default_app = firebase_admin.initialize_app(cred)
+
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
 
 # Store active game rooms and their players
 active_rooms = {}
