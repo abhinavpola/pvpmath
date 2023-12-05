@@ -1,24 +1,18 @@
 import string
 import random
-import time
-from typing import Dict, Any
-
+from typing import Dict
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, join_room, leave_room, emit
 
 from util import problem_generator
 from names_generator import generate_name
 
-import jsonpickle  # pip install jsonpickle
-import json
-
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-RoomMap = Dict[str, Dict[str, Any]]
-
 # Store active game rooms and their players
-active_rooms: RoomMap = {}
+active_rooms = {}
 
 # To tell which room a player is currently in (only 1 at a time)
 player_rooms: Dict[str, str] = {}
@@ -38,9 +32,7 @@ def index() -> Response:
 @app.route("/start", methods=["POST"])
 def start_game() -> Response:
         room_code = generate_room_code()
-        active_rooms[room_code] = {"players": set()}
-        active_rooms[room_code]["player_limit"] = int(request.form.get("numPlayers"))
-        active_rooms[room_code]["time_limit"] = int(request.form.get("gameDuration"))
+        active_rooms[room_code] = {"time_limit": int(request.form.get("gameDuration")), "player_limit": int(request.form.get("numPlayers")), "players": set()}
         print(f"Room '{room_code}' created and waiting for {request.form.get('numPlayers')} players.")
         response = f"""
         <input type="text" class="form-control" id="challengeCode" name="challengeCode" value="{room_code}">
@@ -91,16 +83,7 @@ def battle_room() -> Response:
 
 @socketio.on("disconnect")
 def handle_disconnect():
-    print("player disconnecting")
     leave_player(request.sid)
-    serialized = jsonpickle.encode(
-        [
-            active_rooms,
-            player_rooms,
-        ]
-    )
-    print(json.dumps(json.loads(serialized), indent=2))
-
 
 @socketio.on("client_battle_load")
 def assign_socket_id(data: dict) -> None:
@@ -118,10 +101,31 @@ def assign_socket_id(data: dict) -> None:
             f"Room '{room_code}' now has {active_rooms[room_code]['player_limit']} players. Starting the timer..."
         )
 
+@socketio.on("client_time_ended")
+def time_ended(data: dict) -> None:
+    room_code = data["room_code"]
+    print(f"Time ended in room {room_code}")
+    if datetime.now() > active_rooms[room_code]["end_time"]:
+        socketio.emit(
+            "server_game_ended",
+            {"scores": scores[room_code]},
+            to=room_code,
+        )
+        print(f"Time's up in room '{room_code}'.")
+        return
 
 @socketio.on("client_submitted_answer")
 def check_answer(data: dict) -> None:
     room_code = data["room_code"]
+    if datetime.now() > active_rooms[room_code]["end_time"]:
+        socketio.emit(
+            "server_game_ended",
+            {"scores": scores[room_code]},
+            to=room_code,
+        )
+        print(f"Time's up in room '{room_code}'.")
+        return
+
     current_score = scores[room_code][aliases[request.sid]]
 
     if data["answer"] == active_rooms[room_code]["problems"][current_score]["answer"]:
@@ -160,7 +164,7 @@ def setup_problem_generator(room_code):
 
 
 def start_game_timer(room_code: str) -> None:
-    timer = active_rooms[room_code]["time_limit"]
+    active_rooms[room_code]["end_time"] = datetime.now() + timedelta(seconds=active_rooms[room_code]["time_limit"])
 
     # Send first problem before starting timer
     emit(
@@ -173,20 +177,7 @@ def start_game_timer(room_code: str) -> None:
     for player in active_rooms[room_code]["players"]:
         scores[room_code][player] = 0
 
-    def timer_task():
-        nonlocal timer
-        while timer > 0:
-            socketio.emit("server_timer_update", {"time": timer}, to=room_code)
-            timer -= 1
-            time.sleep(1)
-        socketio.emit(
-            "server_game_ended",
-            {"scores": scores[room_code]},
-            to=room_code,
-        )
-        print(f"Time's up in room '{room_code}'.")
-
-    socketio.start_background_task(target=timer_task)
+    emit("server_start_timer", {"time_limit": active_rooms[room_code]["time_limit"]}, to=room_code)
 
 
 def generate_room_code() -> str:

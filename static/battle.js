@@ -63,11 +63,32 @@ window.onload = function () {
     socket.emit('client_battle_load', { room_code: window.roomCode, player_name: window.playerName });
 };
 
-// Listen for timer updates
-socket.on('server_timer_update', (data) => {
-    const timeLeft = data.time;
-    countdownElement.textContent = `${timeLeft} seconds left`;
+socket.on('server_start_timer', (data) => {
+    const timeLimit = data.time_limit; // in seconds
+    let timeLeft = timeLimit; // initial time left
+
+    // Function to update the countdown text
+    function updateCountdown() {
+        countdownElement.textContent = `${timeLeft} seconds left`;
+
+        // Check if time has run out
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            // Additional logic when the timer reaches zero
+            console.log("game timer has ended!")
+            socket.emit('client_time_ended', { room_code: window.roomCode })
+        } else {
+            timeLeft--; // decrease time left
+        }
+    }
+
+    // Initial update
+    updateCountdown();
+
+    // Start the timer
+    const timerInterval = setInterval(updateCountdown, 1000); // update every 1000ms (1 second)
 });
+
 
 socket.on('server_generated_problem', (data) => {
     answerBoxInput.value = ''
