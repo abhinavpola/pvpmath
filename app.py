@@ -26,7 +26,7 @@ aliases: Dict[str, str] = {}
 
 @app.route("/")
 def index() -> Response:
-    return render_template("index.html", player_name=generate_name(style="capital"))
+    return render_template("index.html", player_name=generate_name(style="capital"), room_code=request.args.get("roomcode", default=""))
 
 
 @app.route("/start", methods=["POST"])
