@@ -93,6 +93,26 @@
             document.getElementById('sliderValue').textContent = value;
         }
     </script>
+
+<script>
+    // Function to clear the challengeCode input
+    function clearChallengeCode() {
+        document.getElementById('challengeCode').value = '';
+    }
+
+    // Event listener for number of players select
+    document.getElementById('numPlayers').addEventListener('change', function () {
+        clearChallengeCode();
+    });
+
+    // Event listener for game duration slider
+    document.getElementById('gameDuration').addEventListener('input', function () {
+        clearChallengeCode();
+        // You can also update the selected duration text if needed
+        document.getElementById('sliderValue').textContent = this.value;
+    });
+</script>
+
 </body>
 
 </html>
