@@ -35,7 +35,7 @@ aliases: Dict[str, str] = {}
 
 @app.route("/")
 def index() -> Response:
-    return render_template("index.html", player_name=generate_name(style="capital"), room_code=request.args.get("roomcode", default=""))
+    return render_template("index.html")
 
 
 @app.route("/start", methods=["POST"])
@@ -88,6 +88,12 @@ def battle_room() -> Response:
         room_code=args.get("roomcode"),
         player_name=args.get("playername"),
     )
+
+@app.route("/home")
+def home_page() -> Response:
+    args = request.args
+    return render_template(
+        "home.html", player_name=generate_name(style="capital"), room_code=request.args.get("roomcode", default=""))
 
 
 @socketio.on("disconnect")
