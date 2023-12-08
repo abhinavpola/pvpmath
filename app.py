@@ -9,8 +9,8 @@ from util import problem_generator
 from names_generator import generate_name
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import credentials, auth
-from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin
+from firebase_admin import credentials, auth, firestore
+from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin, current_user
 
 load_dotenv()
 cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
@@ -36,6 +36,8 @@ scores: Dict[str, Dict[str, int]] = {}
 # Human-readable aliases for socket ids
 aliases: Dict[str, str] = {}
 
+db = firestore.client()
+
 class User(UserMixin):
     pass
 
@@ -58,6 +60,26 @@ def firebase_authenticate(id_token):
         return None
     except auth.InvalidIdTokenError:
         return None
+    
+def save_score(score, duration):
+    # Save the score in the 'all_scores' collection
+    scores_ref = db.collection('all_scores').add({
+        'score': score,
+        'duration': duration
+    })
+
+def calculate_percentile(score, duration):
+    query = db.collection('all_scores').where('duration', '==', duration)
+    scores = [doc.to_dict()['score'] for doc in query.stream()]
+
+    sorted_scores = sorted(scores)
+
+    total_scores = len(sorted_scores)
+    lower_count = sum(1 for s in sorted_scores if s <= score)
+
+    percentile = (lower_count / total_scores) * 100
+
+    return percentile
 
 @app.route("/")
 def index() -> Response:
@@ -77,7 +99,6 @@ def login() -> Response:
     user = firebase_authenticate(id_token)
     if user:
         logged_in = login_user(user)
-        print(f"user logged in: {logged_in}")
         return Response(f"{logged_in}")
     else:
         return jsonify({'error': 'Invalid user ID token'})
@@ -166,11 +187,17 @@ def assign_socket_id(data: dict) -> None:
 @socketio.on("client_time_ended")
 def time_ended(data: dict) -> None:
     room_code = data["room_code"]
+    duration = active_rooms[room_code]["time_limit"]
     print(f"Time ended in room {room_code}")
     if datetime.now() > active_rooms[room_code]["end_time"]:
+        for score in scores[room_code].values():
+            save_score(score, duration)
+        percentiles = {}
+        for player, score in scores[room_code].items():
+            percentiles[player] = calculate_percentile(score, duration)
         socketio.emit(
             "server_game_ended",
-            {"scores": scores[room_code]},
+            {"scores": scores[room_code], "percentiles": percentiles},
             to=room_code,
         )
         print(f"Time's up in room '{room_code}'.")

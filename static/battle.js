@@ -12,7 +12,7 @@ function getQueryParam(param) {
     return urlParams.get(param);
 }
 
-function displayScores(scores) {
+function displayScores(scores, percentiles) {
     // Get the element with id "scoreText"
     var scoreSectionElement = document.getElementById("scoreSection");
 
@@ -43,6 +43,8 @@ function displayScores(scores) {
         cell1.textContent = playerName;
         var cell2 = row.insertCell();
         cell2.textContent = score;
+        var cell3 = row.insertCell();
+        cell3.textContent = percentiles[playerName];
     });
 
     // Append the table body to the table element
@@ -99,7 +101,7 @@ socket.on('server_generated_problem', (data) => {
 socket.on('server_game_ended', (data) => {
     answerBoxInput.disabled = true
     countdownElement.style.display = 'none'
-    displayScores(data['scores'])
+    displayScores(data['scores'], data['percentiles'])
 })
 
 answerBoxInput.oninput = function() {
