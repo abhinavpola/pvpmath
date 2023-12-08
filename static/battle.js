@@ -12,7 +12,7 @@ function getQueryParam(param) {
     return urlParams.get(param);
 }
 
-function displayScores(scores, percentiles) {
+function displayScores(scores) {
     // Get the element with id "scoreText"
     var scoreSectionElement = document.getElementById("scoreSection");
 
@@ -29,6 +29,8 @@ function displayScores(scores, percentiles) {
     headerCell1.textContent = "Player Name";
     var headerCell2 = headerRow.insertCell();
     headerCell2.textContent = "Score";
+    var headerCell3 = headerRow.insertCell();
+    headerCell3.textContent = "Percentile";
 
     // Create table body
     var tbody = document.createElement("tbody");
@@ -42,9 +44,9 @@ function displayScores(scores, percentiles) {
         var cell1 = row.insertCell();
         cell1.textContent = playerName;
         var cell2 = row.insertCell();
-        cell2.textContent = score;
+        cell2.textContent = score[0];
         var cell3 = row.insertCell();
-        cell3.textContent = percentiles[playerName];
+        cell3.textContent = score[1];
     });
 
     // Append the table body to the table element
@@ -101,7 +103,7 @@ socket.on('server_generated_problem', (data) => {
 socket.on('server_game_ended', (data) => {
     answerBoxInput.disabled = true
     countdownElement.style.display = 'none'
-    displayScores(data['scores'], data['percentiles'])
+    displayScores(data['scores'])
 })
 
 answerBoxInput.oninput = function() {

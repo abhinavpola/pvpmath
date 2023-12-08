@@ -1,6 +1,6 @@
 import string
 import random
-from typing import Dict
+from typing import Dict, List
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, Response, jsonify
 from flask_socketio import SocketIO, join_room, leave_room, emit
@@ -31,7 +31,7 @@ active_rooms = {}
 player_rooms: Dict[str, str] = {}
 
 # Scores for each player in each active room
-scores: Dict[str, Dict[str, int]] = {}
+scores: Dict[str, Dict[str, List[int]]] = {}
 
 # Human-readable aliases for socket ids
 aliases: Dict[str, str] = {}
@@ -60,7 +60,8 @@ def firebase_authenticate(id_token):
         return None
     except auth.InvalidIdTokenError:
         return None
-    
+
+
 def save_score(score, duration):
     # Save the score in the 'all_scores' collection
     scores_ref = db.collection('all_scores').add({
@@ -75,7 +76,7 @@ def calculate_percentile(score, duration):
     sorted_scores = sorted(scores)
 
     total_scores = len(sorted_scores)
-    lower_count = sum(1 for s in sorted_scores if s <= score)
+    lower_count = sum(1 for s in sorted_scores if s <= score[0])
 
     percentile = (lower_count / total_scores) * 100
 
@@ -191,13 +192,12 @@ def time_ended(data: dict) -> None:
     print(f"Time ended in room {room_code}")
     if datetime.now() > active_rooms[room_code]["end_time"]:
         for score in scores[room_code].values():
-            save_score(score, duration)
-        percentiles = {}
+            save_score(score[0], duration)
         for player, score in scores[room_code].items():
-            percentiles[player] = calculate_percentile(score, duration)
+            scores[room_code][player][1] = calculate_percentile(score, duration)
         socketio.emit(
             "server_game_ended",
-            {"scores": scores[room_code], "percentiles": percentiles},
+            {"scores": scores[room_code]},
             to=room_code,
         )
         print(f"Time's up in room '{room_code}'.")
@@ -215,11 +215,11 @@ def check_answer(data: dict) -> None:
         print(f"Time's up in room '{room_code}'.")
         return
 
-    current_score = scores[room_code][aliases[request.sid]]
+    current_score = scores[room_code][aliases[request.sid]][0]
 
     if data["answer"] == active_rooms[room_code]["problems"][current_score]["answer"]:
-        scores[room_code][aliases[request.sid]] += 1
-        new_score = scores[room_code][aliases[request.sid]]
+        scores[room_code][aliases[request.sid]][0] += 1
+        new_score = scores[room_code][aliases[request.sid]][0]
         emit(
             "server_generated_problem",
             {
@@ -264,7 +264,7 @@ def start_game_timer(room_code: str) -> None:
 
     scores[room_code] = {}
     for player in active_rooms[room_code]["players"]:
-        scores[room_code][player] = 0
+        scores[room_code][player] = [0, None]
 
     emit("server_start_timer", {"time_limit": active_rooms[room_code]["time_limit"]}, to=room_code)
 
