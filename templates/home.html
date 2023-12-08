@@ -35,14 +35,26 @@
             max-width: 400px;
             margin: 0 auto;
         }
+
+        #logoutLink {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
     </style>
 </head>
 
 <body>
+    <!-- Add the logout link -->
+    <a href="#" id="logoutLink" hx-post="/logout" hx-trigger="click">Logout</a>
     <div class="container mt-5">
         <h1>PvP Math</h1>
         <p>Start the game, then share the code and join the game. Alternatively, enter a code and then join the game.
         </p>
+
+        
+
         <form>
             <div class="mb-3">
                 <label for="readOnlyName" class="form-label">Your player name:</label>
@@ -92,7 +104,7 @@
     <!-- Include HTMX library -->
     <script src="https://unpkg.com/htmx.org@1.9.9"></script>
     <!-- Include home.js -->
-    <script src="{{ url_for('src', filename='home.js') }}"></script>
+    <script src="{{ url_for('static', filename='home.js') }}"></script>
 
 
 </body>

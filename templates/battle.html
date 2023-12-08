@@ -54,7 +54,7 @@
 <body>
     <div class="container mt-5">
         <h1 class="text-center mb-4" id="aliasText">Welcome to the Battle Room, {{ player_name }}</h1>
-        <a href="/">Return home</a>
+        <a href="/home">Return home</a>
         <h4 class="text-center">Room Code: {{ room_code }}</h4>
         <div class="form-group mt-3 text-center">
             <div class="mb-3">
@@ -75,7 +75,7 @@
     <!-- Include Socket.IO library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
     <!-- Include battle.js -->
-    <script src="{{ url_for('src', filename='battle.js') }}"></script>
+    <script src="{{ url_for('static', filename='battle.js') }}"></script>
 </body>
 
 </html>

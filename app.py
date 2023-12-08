@@ -2,14 +2,15 @@ import string
 import random
 from typing import Dict
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, jsonify
 from flask_socketio import SocketIO, join_room, leave_room, emit
 
 from util import problem_generator
 from names_generator import generate_name
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import credentials
+from firebase_admin import credentials, auth
+from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin
 
 load_dotenv()
 cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
@@ -17,7 +18,10 @@ default_app = firebase_admin.initialize_app(cred)
 
 
 app = Flask(__name__)
+app.secret_key = "2c93e85111a3af498188d4ab376234f1bc65cd99fd8ea05db206b6252e158f8a"
 socketio = SocketIO(app, cors_allowed_origins="*")
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 
 # Store active game rooms and their players
@@ -32,13 +36,71 @@ scores: Dict[str, Dict[str, int]] = {}
 # Human-readable aliases for socket ids
 aliases: Dict[str, str] = {}
 
+class User(UserMixin):
+    pass
+
+@login_manager.user_loader
+def load_user(user_id):
+    user = User()
+    user.id = user_id
+    return user
+
+def firebase_authenticate(id_token):
+    try:
+        # Verify Firebase ID token
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+        # Optionally, you can use the 'uid' to load user information from your database
+        user = User()
+        user.id = uid
+        return user
+    except auth.ExpiredIdTokenError:
+        return None
+    except auth.InvalidIdTokenError:
+        return None
 
 @app.route("/")
 def index() -> Response:
     return render_template("index.html")
 
+@app.route("/logout", methods=["POST"])
+@login_required
+def logout():
+    logout_user()
+    response = Response("")
+    response.headers["HX-Redirect"] = "/"
+    return response
+
+@app.route("/login", methods=["POST"])
+def login() -> Response:
+    id_token = request.json['idToken']
+    user = firebase_authenticate(id_token)
+    if user:
+        logged_in = login_user(user)
+        print(f"user logged in: {logged_in}")
+        return Response(f"{logged_in}")
+    else:
+        return jsonify({'error': 'Invalid user ID token'})
+
+@app.route("/battles")
+@login_required
+def battle_room() -> Response:
+    args = request.args
+    return render_template(
+        "battle.html",
+        room_code=args.get("roomcode"),
+        player_name=args.get("playername"),
+    )
+
+@app.route("/home")
+@login_required
+def home_page() -> Response:
+    return render_template(
+            "home.html", player_name=generate_name(style="capital"), room_code=request.args.get("roomcode", default=""))    
+
 
 @app.route("/start", methods=["POST"])
+@login_required
 def start_game() -> Response:
         room_code = generate_room_code()
         active_rooms[room_code] = {"time_limit": int(request.form.get("gameDuration")), "player_limit": int(request.form.get("numPlayers")), "players": set()}
@@ -50,6 +112,7 @@ def start_game() -> Response:
 
 
 @app.route("/join", methods=["POST"])
+@login_required
 def join_game() -> Response:
         room_code = request.form.get("challengeCode")
         player_name = request.form.get("playerName")
@@ -78,22 +141,6 @@ def join_game() -> Response:
             return response
         else:
             return f'<div id="waitingSpinner" hx-post="/join" hx-trigger="load delay:2s" hx-swap="outerHTML">You will be redirected once {active_rooms[room_code]["player_limit"] - len(active_rooms[room_code]["players"])} players have joined...</div>'
-
-
-@app.route("/battles")
-def battle_room() -> Response:
-    args = request.args
-    return render_template(
-        "battle.html",
-        room_code=args.get("roomcode"),
-        player_name=args.get("playername"),
-    )
-
-@app.route("/home")
-def home_page() -> Response:
-    args = request.args
-    return render_template(
-        "home.html", player_name=generate_name(style="capital"), room_code=request.args.get("roomcode", default=""))
 
 
 @socketio.on("disconnect")
