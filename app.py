@@ -191,6 +191,7 @@ def time_ended(data: dict) -> None:
     duration = active_rooms[room_code]["time_limit"]
     print(f"Time ended in room {room_code}")
     if datetime.now() > active_rooms[room_code]["end_time"]:
+        print(f"Returning scores and percentiles for room: {room_code}")
         for score in scores[room_code].values():
             save_score(score[0], duration)
         for player, score in scores[room_code].items():
@@ -202,6 +203,8 @@ def time_ended(data: dict) -> None:
         )
         print(f"Time's up in room '{room_code}'.")
         return
+    else:
+        print(f"Failed to correctly end game for room {room_code}")
 
 @socketio.on("client_submitted_answer")
 def check_answer(data: dict) -> None:
