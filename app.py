@@ -63,24 +63,40 @@ def firebase_authenticate(id_token):
 
 
 def save_score(score, duration):
-    # Save the score in the 'all_scores' collection
-    scores_ref = db.collection('all_scores').add({
-        'score': score,
-        'duration': duration
-    })
+    print("Attempting to save score...")
+    try:
+        # Save the score in the 'all_scores' collection
+        scores_ref = db.collection('all_scores').add({
+            'score': score,
+            'duration': duration
+        })
+        print("Successfully saved score")
+    except Exception as e:
+        print(f"Error saving score: {e}")
+
 
 def calculate_percentile(score, duration):
-    query = db.collection('all_scores').where('duration', '==', duration)
-    scores = [doc.to_dict()['score'] for doc in query.stream()]
+    print(f"Calculating percentile for score: {score} and duration: {duration}")
+    try:
+        query = db.collection('all_scores').where('duration', '==', duration)
+        scores = [doc.to_dict()['score'] for doc in query.stream()]
 
-    sorted_scores = sorted(scores)
+        if not scores:
+            print("No scores found for the given duration.")
+            return None
 
-    total_scores = len(sorted_scores)
-    lower_count = sum(1 for s in sorted_scores if s <= score[0])
+        sorted_scores = sorted(scores)
 
-    percentile = (lower_count / total_scores) * 100
+        total_scores = len(sorted_scores)
+        lower_count = sum(1 for s in sorted_scores if s <= score[0])
 
-    return percentile
+        percentile = (lower_count / total_scores) * 100
+
+        print(f"Calculated percentile: {percentile}")
+        return percentile
+    except Exception as e:
+        print(f"Error calculating percentile: {e}")
+        return None
 
 @app.route("/")
 def index() -> Response:
