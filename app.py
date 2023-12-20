@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin, current_user
-import asyncio
 
 load_dotenv()
 cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
@@ -63,11 +62,11 @@ def firebase_authenticate(id_token):
         return None
 
 
-async def save_score(score, duration):
-    print("Attempting to save score...")
+def save_score(score, duration):
     try:
+        print("Attempting to save score...")
         # Save the score in the 'all_scores' collection
-        await db.collection('all_scores').add({
+        db.collection('all_scores').add({
             'score': score,
             'duration': duration
         })
@@ -212,7 +211,7 @@ def time_ended(data: dict) -> None:
     if datetime.now() > active_rooms[room_code]["end_time"]:
         print(f"Returning scores and percentiles for room: {room_code}")
         for score in scores[room_code].values():
-            asyncio.run(save_score(score[0], duration))
+            save_score(score[0], duration)
         for player, score in scores[room_code].items():
             scores[room_code][player][1] = calculate_percentile(score, duration)
         socketio.emit(
