@@ -40,7 +40,7 @@ document.getElementById('copyButton').addEventListener('click', function () {
     const challengeCodeInput = document.getElementById('challengeCode');
 
     // Combine existing text with additional text
-    const textToCopy = `${window.origin}/battles?roomcode=${challengeCodeInput.value}`;
+    const textToCopy = `${window.origin}/home?roomcode=${challengeCodeInput.value}`;
 
     // Create a temporary textarea element to copy text to clipboard
     const tempTextarea = document.createElement('textarea');

@@ -2,7 +2,7 @@ import string
 import random
 from typing import Dict, List
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, Response, jsonify
+from flask import Flask, render_template, request, Response, jsonify, redirect, url_for
 from flask_socketio import SocketIO, join_room, leave_room, emit
 
 from util import problem_generator
@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin, current_user
+from urllib.parse import quote
 
 load_dotenv()
 cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
@@ -102,6 +103,8 @@ def calculate_percentile(score, duration):
 
 @app.route("/")
 def index() -> Response:
+    if current_user.is_authenticated:
+        return redirect(url_for("home_page"))
     return render_template("index.html")
 
 @app.route("/logout", methods=["POST"])
@@ -121,6 +124,21 @@ def login() -> Response:
         return Response(f"{logged_in}")
     else:
         return jsonify({'error': 'Invalid user ID token'})
+    
+@login_manager.unauthorized_handler
+def unauthorized_callback():
+    # Get the full path including query parameters
+    full_path = request.full_path
+
+    # Check if the full path ends with a '?', remove it if so
+    if full_path.endswith('?'):
+        full_path = full_path[:-1]
+
+    # URL-encode the full path
+    encoded_path = quote(full_path)
+
+    # Redirect to the login page with the 'next' parameter
+    return redirect('/?next=' + encoded_path)
 
 @app.route("/battles")
 @login_required

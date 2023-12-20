@@ -11,7 +11,7 @@ COPY . /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install gunicorn
-RUN pip install gunicorn gevent-websocket eventlet
+RUN pip install gunicorn gevent-websocket eventlet==0.33.3
 
 # Expose the port that the app runs on
 EXPOSE 8080

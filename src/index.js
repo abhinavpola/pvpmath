@@ -22,6 +22,11 @@ function appleProvider() {
   return provider.providerId;
 }
 
+function getQueryParam(param) {
+  var queryParams = new URLSearchParams(window.location.search);
+  return queryParams.get(param);
+}
+
 // Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
 
@@ -54,8 +59,9 @@ var uiConfig = {
         xhr.send(data);
 
         setTimeout(function () {
-          window.location.assign("/home");
-      }, 1000);
+          var nextPath = getQueryParam('next') || '/home';
+          window.location.assign(nextPath);
+        }, 1000);
       });
 
       // Return type determines whether we continue the redirect automatically
