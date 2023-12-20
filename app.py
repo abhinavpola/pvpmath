@@ -210,10 +210,10 @@ def time_ended(data: dict) -> None:
     print(f"Time ended in room {room_code}")
     if datetime.now() > active_rooms[room_code]["end_time"]:
         print(f"Returning scores and percentiles for room: {room_code}")
-        for score in scores[room_code].values():
-            save_score(score[0], duration)
-        for player, score in scores[room_code].items():
-            scores[room_code][player][1] = calculate_percentile(score, duration)
+        # for score in scores[room_code].values():
+        #     save_score(score[0], duration)
+        # for player, score in scores[room_code].items():
+        #     scores[room_code][player][1] = calculate_percentile(score, duration)
         socketio.emit(
             "server_game_ended",
             {"scores": scores[room_code]},
