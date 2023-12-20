@@ -15,6 +15,13 @@ const firebaseConfig = {
   measurementId: "G-1EKPNGQW9J"
 };
 
+function appleProvider() {
+  const provider = new firebase.auth.OAuthProvider('apple.com');
+  provider.addScope('email');
+  provider.addScope('name');
+  return provider.providerId;
+}
+
 // Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
 
@@ -67,6 +74,7 @@ var uiConfig = {
     // Leave the lines as is for the providers you want to offer your users.
     firebase.auth.GoogleAuthProvider.PROVIDER_ID,
     firebase.auth.GithubAuthProvider.PROVIDER_ID,
+    appleProvider(),
   ],
 };
 
