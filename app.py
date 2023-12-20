@@ -12,6 +12,24 @@ import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin, current_user
 from urllib.parse import quote
+from collections import defaultdict
+import bisect
+
+class Leaderboard:
+    def __init__(self):
+        self.scores = defaultdict(list)
+
+    def submit(self, score, duration):
+        bisect.insort(self.scores[duration], score)
+
+        def calculate_percentile():
+            index = bisect.bisect_left(self.scores[duration], score)
+            return (index / len(self.scores[duration])) * 100
+
+        return calculate_percentile()
+
+# Example usage
+leaderboard = Leaderboard()
 
 load_dotenv()
 cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
@@ -63,43 +81,43 @@ def firebase_authenticate(id_token):
         return None
 
 
-def save_score(score, duration):
-    try:
-        print("Attempting to save score...")
-        # Save the score in the 'all_scores' collection
-        db.collection('all_scores').add({
-            'score': score,
-            'duration': duration
-        })
-        print("Successfully saved score")
-    except Exception as e:
-        print(f"Error saving score: {e}")
+# def save_score(score, duration):
+    # try:
+    #     print("Attempting to save score...")
+    #     # Save the score in the 'all_scores' collection
+    #     db.collection('all_scores').add({
+    #         'score': score,
+    #         'duration': duration
+    #     })
+    #     print("Successfully saved score")
+    # except Exception as e:
+    #     print(f"Error saving score: {e}")
 
 
-def calculate_percentile(score, duration):
-    print(f"Calculating percentile for score: {score} and duration: {duration}")
-    scores_of_duration = []
-    try:
-        query = db.collection('all_scores').where('duration', '==', duration)
-        for doc in query.stream():
-            scores_of_duration.append(doc.to_dict()['score'])
+# def calculate_percentile(score, duration):
+#     print(f"Calculating percentile for score: {score} and duration: {duration}")
+#     scores_of_duration = []
+#     try:
+#         query = db.collection('all_scores').where('duration', '==', duration)
+#         for doc in query.stream():
+#             scores_of_duration.append(doc.to_dict()['score'])
 
-        if not scores_of_duration:
-            print("No scores found for the given duration.")
-            return None
+#         if not scores_of_duration:
+#             print("No scores found for the given duration.")
+#             return None
 
-        sorted_scores = sorted(scores_of_duration)
-        total_scores = len(sorted_scores)
-        lower_count = sum(1 for s in sorted_scores if s <= score[0])
-        percentile = (lower_count / total_scores) * 100
+#         sorted_scores = sorted(scores_of_duration)
+#         total_scores = len(sorted_scores)
+#         lower_count = sum(1 for s in sorted_scores if s <= score[0])
+#         percentile = (lower_count / total_scores) * 100
 
-        print(f"Calculated percentile: {percentile}")
-        return percentile
-    except Exception as e:
-        print(f"Error calculating percentile: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+#         print(f"Calculated percentile: {percentile}")
+#         return percentile
+#     except Exception as e:
+#         print(f"Error calculating percentile: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         return None
 
 @app.route("/")
 def index() -> Response:
@@ -228,10 +246,8 @@ def time_ended(data: dict) -> None:
     print(f"Time ended in room {room_code}")
     if datetime.now() > active_rooms[room_code]["end_time"]:
         print(f"Returning scores and percentiles for room: {room_code}")
-        # for score in scores[room_code].values():
-        #     save_score(score[0], duration)
-        # for player, score in scores[room_code].items():
-        #     scores[room_code][player][1] = calculate_percentile(score, duration)
+        for player, score in scores[room_code].items():
+            scores[room_code][player][1] = leaderboard.submit(score, duration)
         socketio.emit(
             "server_game_ended",
             {"scores": scores[room_code]},
