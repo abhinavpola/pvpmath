@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin, current_user
+import asyncio
 
 load_dotenv()
 cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
@@ -62,11 +63,11 @@ def firebase_authenticate(id_token):
         return None
 
 
-def save_score(score, duration):
+async def save_score(score, duration):
     print("Attempting to save score...")
     try:
         # Save the score in the 'all_scores' collection
-        scores_ref = db.collection('all_scores').add({
+        await db.collection('all_scores').add({
             'score': score,
             'duration': duration
         })
@@ -77,25 +78,27 @@ def save_score(score, duration):
 
 def calculate_percentile(score, duration):
     print(f"Calculating percentile for score: {score} and duration: {duration}")
+    scores_of_duration = []
     try:
         query = db.collection('all_scores').where('duration', '==', duration)
-        scores = [doc.to_dict()['score'] for doc in query.stream()]
+        for doc in query.stream():
+            scores_of_duration.append(doc.to_dict()['score'])
 
-        if not scores:
+        if not scores_of_duration:
             print("No scores found for the given duration.")
             return None
 
-        sorted_scores = sorted(scores)
-
+        sorted_scores = sorted(scores_of_duration)
         total_scores = len(sorted_scores)
         lower_count = sum(1 for s in sorted_scores if s <= score[0])
-
         percentile = (lower_count / total_scores) * 100
 
         print(f"Calculated percentile: {percentile}")
         return percentile
     except Exception as e:
         print(f"Error calculating percentile: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 @app.route("/")
@@ -209,7 +212,7 @@ def time_ended(data: dict) -> None:
     if datetime.now() > active_rooms[room_code]["end_time"]:
         print(f"Returning scores and percentiles for room: {room_code}")
         for score in scores[room_code].values():
-            save_score(score[0], duration)
+            asyncio.run(save_score(score[0], duration))
         for player, score in scores[room_code].items():
             scores[room_code][player][1] = calculate_percentile(score, duration)
         socketio.emit(
