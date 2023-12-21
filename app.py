@@ -1,5 +1,3 @@
-import string
-import random
 from typing import Dict, List
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, Response, jsonify, redirect, url_for
@@ -13,11 +11,14 @@ from firebase_admin import credentials, auth, firestore
 from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin, current_user
 from urllib.parse import quote
 from collections import defaultdict
-import bisect
+import sys, os, signal, json, bisect, string, random
 
 class Leaderboard:
     def __init__(self):
         self.scores = defaultdict(list)
+
+    def __repr__(self) -> str:
+        return str(self.scores)
 
     def submit(self, score, duration):
         bisect.insort(self.scores[duration], score)
@@ -28,8 +29,29 @@ class Leaderboard:
 
         return calculate_percentile()
 
-# Example usage
-leaderboard = Leaderboard()
+    def save_to_file(self, filename='leaderboard.json'):
+        with open(filename, 'w') as file:
+            json.dump(dict(self.scores), file)
+
+    @staticmethod
+    def load_from_file(file_path):
+        try:
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as file:
+                    data = json.load(file)
+                    leaderboard = Leaderboard()
+                    leaderboard.scores = defaultdict(list, data)
+                    print(leaderboard)
+                    return leaderboard
+            else:
+                print("File not found.")
+                return Leaderboard()
+        except (IOError, json.JSONDecodeError) as e:
+            print(f"Error loading file: {e}")
+            return Leaderboard()
+
+
+leaderboard = Leaderboard.load_from_file('leaderboard.json')
 
 load_dotenv()
 cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
@@ -56,6 +78,16 @@ scores: Dict[str, Dict[str, List[int]]] = {}
 aliases: Dict[str, str] = {}
 
 db = firestore.client()
+
+# Signal handler function
+def signal_handler(sig, frame):
+    print('Saving leaderboard to file before shutting down...')
+    leaderboard.save_to_file()
+    sys.exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 class User(UserMixin):
     pass

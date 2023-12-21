@@ -2,3 +2,4 @@ __pycache__/
 .env
 pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json
 node_modules/
+leaderboard.json
