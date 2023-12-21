@@ -1,15 +1,11 @@
 from typing import Dict, List
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, Response, jsonify, redirect, url_for
+from flask import Flask, render_template, request, Response
 from flask_socketio import SocketIO, join_room, leave_room, emit
 
 from util import problem_generator
 from names_generator import generate_name
 from dotenv import load_dotenv
-import firebase_admin
-from firebase_admin import credentials, auth, firestore
-from flask_login import login_required, LoginManager, logout_user, login_user, UserMixin, current_user
-from urllib.parse import quote
 from collections import defaultdict
 import sys, os, signal, json, bisect, string, random
 
@@ -54,16 +50,9 @@ class Leaderboard:
 leaderboard = Leaderboard.load_from_file('leaderboard.json')
 
 load_dotenv()
-cred = credentials.Certificate("pvpmath-firebase-adminsdk-k1jtt-0aae5478cf.json")
-default_app = firebase_admin.initialize_app(cred)
-
 
 app = Flask(__name__)
-app.secret_key = "2c93e85111a3af498188d4ab376234f1bc65cd99fd8ea05db206b6252e158f8a"
 socketio = SocketIO(app, cors_allowed_origins="*")
-login_manager = LoginManager()
-login_manager.init_app(app)
-
 
 # Store active game rooms and their players
 active_rooms = {}
@@ -77,8 +66,6 @@ scores: Dict[str, Dict[str, List[int]]] = {}
 # Human-readable aliases for socket ids
 aliases: Dict[str, str] = {}
 
-db = firestore.client()
-
 # Signal handler function
 def signal_handler(sig, frame):
     print('Saving leaderboard to file before shutting down...')
@@ -89,126 +76,21 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
 
-class User(UserMixin):
-    pass
-
-@login_manager.user_loader
-def load_user(user_id):
-    user = User()
-    user.id = user_id
-    return user
-
-def firebase_authenticate(id_token):
-    try:
-        # Verify Firebase ID token
-        decoded_token = auth.verify_id_token(id_token)
-        uid = decoded_token['uid']
-        # Optionally, you can use the 'uid' to load user information from your database
-        user = User()
-        user.id = uid
-        return user
-    except auth.ExpiredIdTokenError:
-        return None
-    except auth.InvalidIdTokenError:
-        return None
-
-
-# def save_score(score, duration):
-    # try:
-    #     print("Attempting to save score...")
-    #     # Save the score in the 'all_scores' collection
-    #     db.collection('all_scores').add({
-    #         'score': score,
-    #         'duration': duration
-    #     })
-    #     print("Successfully saved score")
-    # except Exception as e:
-    #     print(f"Error saving score: {e}")
-
-
-# def calculate_percentile(score, duration):
-#     print(f"Calculating percentile for score: {score} and duration: {duration}")
-#     scores_of_duration = []
-#     try:
-#         query = db.collection('all_scores').where('duration', '==', duration)
-#         for doc in query.stream():
-#             scores_of_duration.append(doc.to_dict()['score'])
-
-#         if not scores_of_duration:
-#             print("No scores found for the given duration.")
-#             return None
-
-#         sorted_scores = sorted(scores_of_duration)
-#         total_scores = len(sorted_scores)
-#         lower_count = sum(1 for s in sorted_scores if s <= score[0])
-#         percentile = (lower_count / total_scores) * 100
-
-#         print(f"Calculated percentile: {percentile}")
-#         return percentile
-#     except Exception as e:
-#         print(f"Error calculating percentile: {e}")
-#         import traceback
-#         traceback.print_exc()
-#         return None
-
 @app.route("/")
 def index() -> Response:
-    if current_user.is_authenticated:
-        return redirect(url_for("home_page"))
-    return render_template("index.html")
-
-@app.route("/logout", methods=["POST"])
-@login_required
-def logout():
-    logout_user()
-    response = Response("")
-    response.headers["HX-Redirect"] = "/"
-    return response
-
-@app.route("/login", methods=["POST"])
-def login() -> Response:
-    id_token = request.json['idToken']
-    user = firebase_authenticate(id_token)
-    if user:
-        logged_in = login_user(user)
-        return Response(f"{logged_in}")
-    else:
-        return jsonify({'error': 'Invalid user ID token'})
-    
-@login_manager.unauthorized_handler
-def unauthorized_callback():
-    # Get the full path including query parameters
-    full_path = request.full_path
-
-    # Check if the full path ends with a '?', remove it if so
-    if full_path.endswith('?'):
-        full_path = full_path[:-1]
-
-    # URL-encode the full path
-    encoded_path = quote(full_path)
-
-    # Redirect to the login page with the 'next' parameter
-    return redirect('/?next=' + encoded_path)
+    return render_template("index.html", player_name=generate_name('capital'))
 
 @app.route("/battles")
-@login_required
 def battle_room() -> Response:
     args = request.args
     return render_template(
         "battle.html",
         room_code=args.get("roomcode"),
         player_name=args.get("playername"),
-    )
-
-@app.route("/home")
-@login_required
-def home_page() -> Response:
-    return render_template(
-            "home.html", player_name=generate_name(style="capital"), room_code=request.args.get("roomcode", default=""))    
+    )  
 
 
 @app.route("/start", methods=["POST"])
-@login_required
 def start_game() -> Response:
         room_code = generate_room_code()
         active_rooms[room_code] = {"time_limit": int(request.form.get("gameDuration")), "player_limit": int(request.form.get("numPlayers")), "players": set()}
@@ -220,7 +102,6 @@ def start_game() -> Response:
 
 
 @app.route("/join", methods=["POST"])
-@login_required
 def join_game() -> Response:
         room_code = request.form.get("challengeCode")
         player_name = request.form.get("playerName")
