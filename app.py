@@ -262,12 +262,7 @@ def time_ended(data: dict) -> None:
 def check_answer(data: dict) -> None:
     room_code = data["room_code"]
     if datetime.now() > active_rooms[room_code]["end_time"]:
-        socketio.emit(
-            "server_game_ended",
-            {"scores": scores[room_code]},
-            to=room_code,
-        )
-        print(f"Time's up in room '{room_code}'.")
+        time_ended(data)
         return
 
     current_score = scores[room_code][aliases[request.sid]][0]
